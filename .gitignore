@@ -1,0 +1,21 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+pubspec.lock
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# Local session data — never commit user paths, profiles or journals
+*.jsonl
+/local/
+/scratch/
