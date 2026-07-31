@@ -11,7 +11,7 @@ void main() {
       );
 
   test('soft trash lives inside the source root', () {
-    expect(config([]).trashPath, '/photos/_papelera');
+    expect(config([]).trashPath, '/photos/_trash');
   });
 
   test('rejects two destinations on the same slot', () {

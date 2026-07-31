@@ -30,7 +30,7 @@ class SessionConfig {
   /// The system trash is deliberately avoided: its behaviour differs between
   /// platforms and it hides the files from the user, which is the opposite of
   /// what a reversible tool should do.
-  String get trashPath => p.join(sourceRoot, '_papelera');
+  String get trashPath => p.join(sourceRoot, '_trash');
 
   Destination? destinationForSlot(int slot) {
     for (final d in destinations) {

@@ -12,7 +12,7 @@ explicit confirmation" is what a stranger needs to read before pointing the app 
 
 - It never sends anything over the network. There is no telemetry and no analytics.
 - It never deletes a file outright. "Deleting" moves the file to a soft trash folder
-  (`_papelera`) inside the source directory; the system trash is not used, since its
+  (`_trash`) inside the source directory; the system trash is not used, since its
   behaviour differs across platforms and hides the user's files from view.
 - It never overwrites an existing file at a destination.
 
