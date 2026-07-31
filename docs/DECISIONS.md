@@ -11,6 +11,7 @@
 |---|----------|--------|
 | [ADR-001](#adr-001-flutter-desktop-as-the-stack) | Flutter desktop as the stack | Accepted |
 | [ADR-002](#adr-002-append-only-journal-as-the-source-of-truth) | Append-only journal as the source of truth | Accepted |
+| [ADR-003](#adr-003-size-verification-for-cross-volume-copies) | Size verification for cross-volume copies | Accepted |
 
 ---
 
@@ -68,3 +69,29 @@ impossible.
 **SQLite**
 Robust and queryable, but it adds a native dependency and complicates packaging for a use
 case that is purely sequential: append at the end and read the whole thing.
+
+---
+
+## ADR-003: Size verification for cross-volume copies
+
+**Date**: 2026-07-30
+
+### Context
+
+Moving a file between different disks is not atomic: it is a copy followed by a delete. If
+the delete happens without checking the copy, a half-finished failure destroys the original.
+
+### Decision
+
+Copy, **compare the size** of the destination against the source, and only then delete the
+original. The modification time is restored after the copy.
+
+### Alternatives rejected
+
+**Comparing SHA-256 hashes**
+Full integrity guarantee, but it forces reading every file twice. Across 30,000 photos that
+turns an instant operation into hours of I/O, and the product's stated goal is speed.
+
+**Trusting the filesystem without verifying**
+It is what most tools do, and it is exactly the behaviour that makes them impossible to
+trust with irreplaceable files.
