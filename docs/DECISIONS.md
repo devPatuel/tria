@@ -1,70 +1,70 @@
 # Architecture Decision Records — Tría
 
-**Proyecto**: Tría — organizador de archivos por teclado
-**Autor**: Jordi Patuel Pons
+**Project**: Tría — keyboard-driven file organiser
+**Author**: Jordi Patuel Pons
 
 ---
 
-## Índice
+## Index
 
-| # | Decisión | Estado |
+| # | Decision | Status |
 |---|----------|--------|
-| [ADR-001](#adr-001-flutter-desktop-como-stack) | Flutter desktop como stack | Aceptado |
-| [ADR-002](#adr-002-diario-append-only-como-fuente-de-verdad) | Diario append-only como fuente de verdad | Aceptado |
+| [ADR-001](#adr-001-flutter-desktop-as-the-stack) | Flutter desktop as the stack | Accepted |
+| [ADR-002](#adr-002-append-only-journal-as-the-source-of-truth) | Append-only journal as the source of truth | Accepted |
 
 ---
 
-## ADR-001: Flutter desktop como stack
+## ADR-001: Flutter desktop as the stack
 
-**Fecha**: 2026-07-30
+**Date**: 2026-07-30
 
-### Contexto
+### Context
 
-Tría necesita una interfaz fluida, control fino del teclado y un binario para macOS y
-Windows. El desarrollador domina Flutter y Java.
+Tría needs a fluid interface, fine-grained keyboard control and a binary for both macOS and
+Windows. The developer is proficient in Flutter and Java.
 
-### Decisión
+### Decision
 
-**Flutter desktop (Dart)** para toda la aplicación, con el núcleo escrito en Dart puro
-sin dependencias de Flutter.
+**Flutter desktop (Dart)** for the whole application, with the core written in plain Dart
+with no Flutter dependencies.
 
-### Alternativas descartadas
+### Alternatives rejected
 
 **Tauri (Rust + web)**
-Es lo que usa el competidor con más estrellas y su tratamiento de imagen sería más
-rápido, pero exige aprender Rust: la curva se come el tiempo de producto y el riesgo de
-abandono del proyecto sube.
+It is what the competitor with the most stars uses and its image handling would be faster,
+but it requires learning Rust: the learning curve eats into product time and raises the risk
+of abandoning the project.
 
 **Java + JavaFX**
-El lenguaje profesional del autor, pero el empaquetado de escritorio y el ecosistema de
-UI están muy por detrás en 2026.
+The author's professional language, but desktop packaging and the UI ecosystem are far
+behind in 2026.
 
 **Swift / SwiftUI**
-Máximo rendimiento e integración en macOS, pero renuncia a Windows.
+Maximum performance and macOS integration, but it gives up Windows.
 
 ---
 
-## ADR-002: Diario append-only como fuente de verdad
+## ADR-002: Append-only journal as the source of truth
 
-**Fecha**: 2026-07-30
+**Date**: 2026-07-30
 
-### Contexto
+### Context
 
-La aplicación mueve archivos irremplazables a gran velocidad. Necesita deshacer, reanudar
-tras un cierre inesperado y revertir una sesión completa.
+The application moves irreplaceable files at speed. It needs undo, resuming after an
+unexpected shutdown, and reverting a whole session.
 
-### Decisión
+### Decision
 
-Un **diario append-only en JSONL** registra cada operación como intención (`pending`) y
-después como resultado (`done` / `failed`). Es la única fuente de verdad sobre lo que ha
-pasado; el estado en memoria se deriva de él.
+An **append-only JSONL journal** records every operation first as an intent (`pending`) and
+then as an outcome (`done` / `failed`). It is the single source of truth about what happened;
+in-memory state is derived from it.
 
-### Alternativas descartadas
+### Alternatives rejected
 
-**Estado solo en memoria**
-Simple, pero pierde todo ante un cierre inesperado y hace imposible revertir una sesión
-pasada.
+**In-memory state only**
+Simple, but it loses everything on an unexpected shutdown and makes reverting a past session
+impossible.
 
 **SQLite**
-Robusto y consultable, pero añade una dependencia nativa y complica el empaquetado para
-un caso de uso que es puramente secuencial: escribir al final y leer entero.
+Robust and queryable, but it adds a native dependency and complicates packaging for a use
+case that is purely sequential: append at the end and read the whole thing.
