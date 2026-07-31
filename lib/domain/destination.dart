@@ -16,4 +16,12 @@ class Destination {
       throw ArgumentError.value(label, 'label', 'must not be empty');
     }
   }
+
+  Map<String, dynamic> toJson() => {'slot': slot, 'label': label, 'path': path};
+
+  factory Destination.fromJson(Map<String, dynamic> json) => Destination(
+        slot: json['slot'] as int,
+        label: json['label'] as String,
+        path: json['path'] as String,
+      );
 }

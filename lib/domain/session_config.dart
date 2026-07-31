@@ -38,4 +38,20 @@ class SessionConfig {
     }
     return null;
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'sourceRoot': sourceRoot,
+        'recursive': recursive,
+        'destinations': destinations.map((d) => d.toJson()).toList(),
+      };
+
+  factory SessionConfig.fromJson(Map<String, dynamic> json) => SessionConfig(
+        id: json['id'] as String,
+        sourceRoot: json['sourceRoot'] as String,
+        recursive: json['recursive'] as bool,
+        destinations: (json['destinations'] as List)
+            .map((d) => Destination.fromJson(d as Map<String, dynamic>))
+            .toList(),
+      );
 }
