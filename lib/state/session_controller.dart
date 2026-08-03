@@ -60,6 +60,9 @@ class SessionController extends ChangeNotifier {
 
   List<FileEntry> get postponed => List.unmodifiable(_postponed);
 
+  /// The file at [index] in the session queue, for lookahead preloading.
+  FileEntry fileAt(int index) => _queueOfFiles[index];
+
   bool get isFinished => current == null;
 
   /// Records the decision, hands it to the queue and advances.
