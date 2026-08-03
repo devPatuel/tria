@@ -70,7 +70,23 @@ class _TriageScreenState extends State<TriageScreen> {
         .addPostFrameCallback((_) => _syncPreview(controller));
 
     if (controller.isFinished) {
-      return const Scaffold(body: Center(child: Text('Session finished')));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Session finished'),
+              const SizedBox(height: 16),
+              if (controller.postponed.isNotEmpty)
+                FilledButton(
+                  key: const Key('review-postponed'),
+                  onPressed: controller.startPostponedRound,
+                  child: Text('Review ${controller.postponed.length} postponed'),
+                ),
+            ],
+          ),
+        ),
+      );
     }
 
     final entry = controller.current!;
