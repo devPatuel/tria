@@ -9,12 +9,18 @@ the dangerous zone — the part that moves the user's files.
 | Module | Responsibility | Depends on |
 |---|---|---|
 | `domain/` | Models and invariants: `FileEntry`, `Destination`, `SessionConfig`, `Decision`, `JournalEntry` | — |
-| `core/journal/` | Append-only journal in JSONL: every operation as intent → result | `domain` |
-| `core/fs/` | Move executor: name collisions, cross-volume moves, soft trash, reversal | `domain`, `core/journal` |
-| `core/scanner/` | Tree traversal on an isolate; delivers the queue by streaming | `domain` |
-| `core/preview/` | Isolate-based decoding, in-memory LRU cache, on-disk thumbnails, prefetch | — |
+| `core/journal/` | `JsonlJournal` (append-only, every operation as intent → result) and `SessionRecovery` (reconciles a crashed session against the disk) | `domain` |
+| `core/fs/` | `FileMover` (collisions, cross-volume moves), `SoftTrash`, `Reverter` (undo and full-session revert), `OperationQueue` (serialised background execution) | `domain`, `core/journal` |
+| `core/scanner/` | `FileScanner`: streams the source tree, excludes the trash folder, flags cloud placeholders | `domain` |
+| `core/preview/` | `previewKindFor` (image · generic · cloud placeholder) and `PreviewCache`, an in-memory LRU of file bytes with lookahead preloading | `domain` |
+| `core/storage/` | `AppPaths` (where the app keeps its own data) and `ProfileStore` (reusable session profiles) | `domain` |
 | `state/` | `SessionController` (`ChangeNotifier` + Provider) | all of the above |
-| `ui/` | Three screens: configure session · triage · summary | `state` |
+| `ui/` | `key_bindings.dart` plus three screens: setup · triage · summary | `state`, `core/preview` |
+
+Two things the original design assumed and the implementation did **not** need: isolates and
+on-disk thumbnails. Measurement (ADR-004) put a cold 4 MB read at ~3 ms and a cached one at
+~5 µs, which fits inside a frame with room to spare, so the extra machinery would have bought
+complexity and nothing else.
 
 ## The journal (the central piece)
 
@@ -60,7 +66,7 @@ At 30,000 files these cases are not exceptional: they are business as usual.
 |---|---|
 | **Name collision** (`IMG_0042.jpg` already exists at the destination) | Never overwrite. Incremental suffix, and the real name is recorded in the journal so undo keeps working |
 | **Cross-volume moves** | Moving across disks is not atomic: it is copy + delete. The file is copied, verified, and only then is the source deleted |
-| **Cloud-only files** (iCloud, OneDrive) | Zero-byte placeholders are detected; the user is offered to download or skip — a broken preview is never shown |
-| **macOS permissions (TCC)** | Desktop, Documents, Downloads and Photos require explicit authorisation. It is requested with context; without it the app explains what is missing instead of failing silently |
+| **Cloud-only files** (iCloud, OneDrive) | Zero-byte and `.icloud` placeholders are detected and shown as "stored in the cloud" instead of a broken image |
+| **macOS sandbox** | The app declares `files.user-selected.read-write`, so access is granted by the user picking a folder in the system dialog. This is why the setup screen has a folder button and a typed path is not enough |
 | **File disappeared** | Another program moved it during the session: it is skipped and logged, without interrupting the user |
 | **Disk full / destination not writable** | The operation fails cleanly, is marked in the journal, and the user is warned without losing progress |

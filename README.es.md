@@ -37,8 +37,9 @@ Tría solo se aparta del camino.
 | `↓` | Posponer — se vuelve a preguntar al final de la sesión |
 | `←` | Deshacer la decisión anterior |
 | `→` | Dejar donde está y seguir |
-| `Intro` | Abrir en el visor del sistema |
-| `Espacio` | Zoom 1:1 |
+
+Abrir el archivo en el visor del sistema (`Intro`) y el zoom 1:1 (`Espacio`) están diseñados
+pero todavía no implementados.
 
 ## Instalación
 

@@ -35,8 +35,9 @@ decision; Tría just gets out of the way.
 | `↓` | Postpone — asked again at the end of the session |
 | `←` | Undo the previous decision |
 | `→` | Keep in place and move on |
-| `Enter` | Open in the system viewer |
-| `Space` | Zoom 1:1 |
+
+Opening the file in the system viewer (`Enter`) and 1:1 zoom (`Space`) are designed but not
+implemented yet.
 
 ## Install
 
