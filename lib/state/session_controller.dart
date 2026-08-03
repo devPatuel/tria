@@ -28,13 +28,25 @@ class SessionController extends ChangeNotifier {
   final List<Decision> _history = [];
   var _cursor = 0;
 
+  final Map<int, int> _movedPerSlot = {};
+  var _trashedCount = 0;
+  var _keptCount = 0;
+  var _postponedCount = 0;
+
+  /// When the session began, for reporting duration and throughput.
+  final DateTime startedAt = DateTime.now();
+
   SessionController({
     required this.config,
     required this.queue,
     required this.reverter,
     required this.scanner,
     this.alreadyProcessed = const {},
-  });
+  }) {
+    for (final destination in config.destinations) {
+      _movedPerSlot[destination.slot] = 0;
+    }
+  }
 
   /// Scans the source folder and positions the cursor on the first file.
   Future<void> start() async {
@@ -63,6 +75,44 @@ class SessionController extends ChangeNotifier {
   /// The file at [index] in the session queue, for lookahead preloading.
   FileEntry fileAt(int index) => _queueOfFiles[index];
 
+  /// How many files have gone to each destination slot so far.
+  ///
+  /// Every configured slot is present from the start, at zero, so the interface
+  /// can render a stable row per destination instead of one that appears on
+  /// first use.
+  Map<int, int> get movedPerSlot => Map.unmodifiable(_movedPerSlot);
+
+  int get trashedCount => _trashedCount;
+
+  int get keptCount => _keptCount;
+
+  int get postponedCount => _postponedCount;
+
+  Duration get elapsed => DateTime.now().difference(startedAt);
+
+  /// Decisions per second, as a running average over the whole session.
+  double get filesPerSecond {
+    final seconds = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    if (seconds <= 0 || _cursor == 0) return 0;
+    return _cursor / seconds;
+  }
+
+  void _count(Decision decision, int delta) {
+    switch (decision.kind) {
+      case DecisionKind.move:
+        final slot = decision.slot;
+        if (slot != null) {
+          _movedPerSlot[slot] = (_movedPerSlot[slot] ?? 0) + delta;
+        }
+      case DecisionKind.trash:
+        _trashedCount += delta;
+      case DecisionKind.keep:
+        _keptCount += delta;
+      case DecisionKind.postpone:
+        _postponedCount += delta;
+    }
+  }
+
   bool get isFinished => current == null;
 
   /// Records the decision, hands it to the queue and advances.
@@ -72,6 +122,7 @@ class SessionController extends ChangeNotifier {
       if (entry != null) _postponed.add(entry);
     }
     _history.add(decision);
+    _count(decision, 1);
     queue.enqueue(decision);
     _cursor++;
     notifyListeners();
@@ -81,6 +132,7 @@ class SessionController extends ChangeNotifier {
   Future<void> undo() async {
     if (_history.isEmpty) return;
     final last = _history.removeLast();
+    _count(last, -1);
 
     if (last.kind == DecisionKind.move || last.kind == DecisionKind.trash) {
       await queue.drain();
