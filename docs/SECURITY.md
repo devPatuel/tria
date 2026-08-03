@@ -24,6 +24,27 @@ explicit confirmation" is what a stranger needs to read before pointing the app 
   `%APPDATA%\Tria` on Windows), where the journal, session profiles, and the thumbnail
   cache live. Never inside the repository, never next to the user's files.
 
+## What Tría does on your disk
+
+| Action | When |
+|---|---|
+| Read the files in the source folder | While scanning, and to render each preview |
+| Move files into the destination folders | On `1`–`9` |
+| Move files into `_trash` inside the source folder | On `↑` |
+| Delete permanently | **Only** when emptying the trash, behind an explicit confirmation |
+| Write the journal and the profiles | In the app data directory, outside your folders |
+
+## Permissions it asks for
+
+On macOS the app runs sandboxed. It declares
+`com.apple.security.files.user-selected.read-write`, which grants access **only** to the
+folders you pick yourself through the system dialog — this is why the folder button exists
+and why a hand-typed path yields an empty session. Full disk access is never requested.
+
+The debug build additionally declares `com.apple.security.network.server`, which the Flutter
+tooling needs for hot reload. It is deliberately absent from the release entitlements, so the
+shipped app cannot listen on the network.
+
 ## Repository hygiene: private repo, treated as public
 
 | Risk | Rule |

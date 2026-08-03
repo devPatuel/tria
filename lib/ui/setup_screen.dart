@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/destination.dart';
@@ -21,6 +22,17 @@ class _SetupScreenState extends State<SetupScreen> {
   final _destinations = <Destination>[];
   var _recursive = true;
   String? _error;
+
+  /// Opens the system folder dialog.
+  ///
+  /// On macOS this is not cosmetic: picking a folder through the system dialog
+  /// is what grants a sandboxed app access to it. A path typed by hand grants
+  /// nothing, and the session would come up empty.
+  Future<void> _pickSourceFolder() async {
+    final path = await getDirectoryPath();
+    if (path == null || !mounted) return;
+    setState(() => _sourceController.text = path);
+  }
 
   void _addDestination() {
     if (_destinations.length >= 9) {
@@ -67,11 +79,23 @@ class _SetupScreenState extends State<SetupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              key: const Key('source-root'),
-              controller: _sourceController,
-              decoration: const InputDecoration(labelText: 'Source folder'),
-              onChanged: (_) => setState(() {}),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('source-root'),
+                    controller: _sourceController,
+                    decoration: const InputDecoration(labelText: 'Source folder'),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('pick-source'),
+                  icon: const Icon(Icons.folder_open),
+                  tooltip: 'Choose folder',
+                  onPressed: _pickSourceFolder,
+                ),
+              ],
             ),
             SwitchListTile(
               title: const Text('Include subfolders'),
