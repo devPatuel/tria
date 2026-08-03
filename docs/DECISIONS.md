@@ -12,6 +12,7 @@
 | [ADR-001](#adr-001-flutter-desktop-as-the-stack) | Flutter desktop as the stack | Accepted |
 | [ADR-002](#adr-002-append-only-journal-as-the-source-of-truth) | Append-only journal as the source of truth | Accepted |
 | [ADR-003](#adr-003-size-verification-for-cross-volume-copies) | Size verification for cross-volume copies | Accepted |
+| [ADR-004](#adr-004-a-three-file-lookahead-window) | A three-file lookahead window | Accepted |
 
 ---
 
@@ -95,3 +96,41 @@ turns an instant operation into hours of I/O, and the product's stated goal is s
 **Trusting the filesystem without verifying**
 It is what most tools do, and it is exactly the behaviour that makes them impossible to
 trust with irreplaceable files.
+
+---
+
+## ADR-004: A three-file lookahead window
+
+**Date**: 2026-08-03
+
+### Context
+
+Reading and decoding an image is the only slow step in the decision loop. Preloading too far
+ahead holds memory for files the user may never reach; preloading too little leaves a visible
+wait on every keystroke.
+
+Measured on the development machine (Apple silicon, SSD) with 4 MB files,
+`test/performance/preview_benchmark_test.dart`:
+
+| Operation | Time |
+|---|---|
+| Cold read of one 4 MB file | ~3.1 ms |
+| Cached read of the same file | ~4.7 µs (about 660× faster) |
+| Preloading three 4 MB files | ~7 ms |
+
+### Decision
+
+Preload the **next three** files, with an eight-entry LRU cache.
+
+Three files cost about 7 ms of work and roughly 12 MB of memory — invisible next to a single
+frame at 60 Hz (16.7 ms), so the preloading never competes with the interface.
+
+### Alternatives rejected
+
+**Preloading a single file**
+Enough at one decision every two seconds, not enough when the user chains fast keystrokes on
+obvious files, which is the normal case with memes and screenshots.
+
+**Preloading ten or more**
+With 4 MB photos that is tens of megabytes held for files the user may never see, and on a
+slow external drive the reads would queue behind each other.
