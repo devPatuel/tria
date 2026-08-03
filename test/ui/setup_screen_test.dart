@@ -10,8 +10,41 @@ void main() {
   testWidgets('cannot start without a source folder', (tester) async {
     await tester.pumpWidget(wrap((_) {}));
 
-    final startButton = tester.widget<FilledButton>(find.byType(FilledButton));
+    final startButton = tester.widget<FilledButton>(
+        find.byKey(const Key('start-sorting')));
     expect(startButton.onPressed, isNull);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('says why it cannot start yet', (tester) async {
+    await tester.pumpWidget(wrap((_) {}));
+
+    expect(find.text('Choose a source folder to start'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('asks for a destination once the folder is set', (tester) async {
+    await tester.pumpWidget(wrap((_) {}));
+
+    await tester.enterText(find.byKey(const Key('source-root')), '/photos');
+    await tester.pump();
+
+    expect(find.text('Add at least one destination'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('starts once both are given', (tester) async {
+    SessionConfig? started;
+    await tester.pumpWidget(wrap((c) => started = c));
+
+    await tester.enterText(find.byKey(const Key('source-root')), '/photos');
+    await tester.enterText(find.byKey(const Key('destination-label')), 'Family');
+    await tester.enterText(find.byKey(const Key('destination-path')), '/sorted');
+    await tester.tap(find.byKey(const Key('add-destination')));
+    await tester.pump();
+    await tester.tap(find.text('Start sorting'));
+    await tester.pump();
+
+    expect(started, isNotNull);
+    expect(started!.sourceRoot, '/photos');
+    expect(started!.destinations.single.label, 'Family');
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('adding a destination shows it in the list', (tester) async {

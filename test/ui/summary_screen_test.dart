@@ -4,6 +4,8 @@ import 'package:tria/core/fs/file_mover.dart';
 import 'package:tria/core/fs/reverter.dart';
 import 'package:tria/core/fs/soft_trash.dart';
 import 'package:tria/core/journal/journal.dart';
+import 'package:tria/core/platform/folder_opener.dart';
+import 'package:tria/domain/destination.dart';
 import 'package:tria/ui/summary_screen.dart';
 
 import 'dart:io';
@@ -41,18 +43,44 @@ class _FakeReverter extends Reverter {
   }
 }
 
+/// Records what would have been opened, without opening anything.
+class _FakeOpener extends FolderOpener {
+  final revealed = <String>[];
+
+  @override
+  Future<bool> reveal(String path) async {
+    revealed.add(path);
+    return true;
+  }
+}
+
 void main() {
   late _FakeTrash trash;
   late _FakeReverter reverter;
+  late _FakeOpener opener;
 
   setUp(() {
     trash = _FakeTrash();
     reverter = _FakeReverter();
+    opener = _FakeOpener();
   });
 
   Future<void> pumpScreen(WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: SummaryScreen(trash: trash, reverter: reverter, sessionId: 's1'),
+      home: SummaryScreen(
+        trash: trash,
+        reverter: reverter,
+        sessionId: 's1',
+        opener: opener,
+        destinations: [
+          Destination(slot: 1, label: 'Family', path: '/sorted/family'),
+          Destination(slot: 2, label: 'Trips', path: '/sorted/trips'),
+        ],
+        movedPerSlot: const {1: 12, 2: 5},
+        keptCount: 3,
+        decidedCount: 20,
+        elapsed: const Duration(seconds: 40),
+      ),
     ));
     await tester.pump(); // lets the initial count settle
   }
@@ -60,7 +88,34 @@ void main() {
   testWidgets('shows how much is waiting in the trash', (tester) async {
     await pumpScreen(tester);
 
-    expect(find.text('3 files waiting in the soft trash'), findsOneWidget);
+    final trashRow = tester.widget<DestinationTotalRow>(
+        find.widgetWithText(DestinationTotalRow, 'Trash'));
+    expect(trashRow.count, 3);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('lists a total per destination', (tester) async {
+    await pumpScreen(tester);
+
+    final family = tester.widget<DestinationTotalRow>(
+        find.widgetWithText(DestinationTotalRow, 'Family'));
+    expect(family.count, 12);
+    expect(find.text('Trips'), findsOneWidget);
+    expect(find.text('Left in place'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('reports how the session went', (tester) async {
+    await pumpScreen(tester);
+
+    expect(find.text('20 files · 40 s · 0.5/s'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('opening a folder asks the system to reveal it', (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.byKey(const Key('open-folder-1')));
+    await tester.pumpAndSettle();
+
+    expect(opener.revealed.single, '/sorted/family');
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('emptying the trash asks for confirmation first', (tester) async {

@@ -15,6 +15,7 @@ import 'package:tria/domain/destination.dart';
 import 'package:tria/domain/session_config.dart';
 import 'package:tria/state/session_controller.dart';
 import 'package:tria/ui/triage_screen.dart';
+import 'package:tria/ui/widgets/file_meta.dart';
 
 import '../support/fixtures.dart';
 
@@ -104,5 +105,48 @@ void main() {
     await tester.pump();
 
     expect(find.text('Session finished'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('shows the size and date of the current file', (tester) async {
+    await tester.pumpWidget(wrap());
+
+    expect(find.byType(FileMeta), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('the destination count goes up as files are sent there',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+
+    // Keyed because the tile shows two numbers: the key and the count.
+    String countOfSlotOne() =>
+        tester.widget<Text>(find.byKey(const Key('count-1'))).data!;
+
+    expect(countOfSlotOne(), '0');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.pump();
+
+    expect(countOfSlotOne(), '1');
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('keeps the key legend on screen', (tester) async {
+    await tester.pumpWidget(wrap());
+
+    expect(find.text('undo'), findsOneWidget);
+    expect(find.text('trash'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('two keystrokes inside one animation both land', (tester) async {
+    await tester.pumpWidget(wrap());
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump(const Duration(milliseconds: 20)); // mid-animation
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    // Both files are gone, so the session is over — which is itself the proof
+    // that the second keystroke was not swallowed by the running animation.
+    expect(find.text('2 files decided'), findsOneWidget,
+        reason: 'the animation must never gate a decision');
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

@@ -14,13 +14,26 @@ the dangerous zone — the part that moves the user's files.
 | `core/scanner/` | `FileScanner`: streams the source tree, excludes the trash folder, flags cloud placeholders | `domain` |
 | `core/preview/` | `previewKindFor` (image · generic · cloud placeholder) and `PreviewCache`, an in-memory LRU of file bytes with lookahead preloading | `domain` |
 | `core/storage/` | `AppPaths` (where the app keeps its own data) and `ProfileStore` (reusable session profiles) | `domain` |
-| `state/` | `SessionController` (`ChangeNotifier` + Provider) | all of the above |
-| `ui/` | `key_bindings.dart` plus three screens: setup · triage · summary | `state`, `core/preview` |
+| `core/platform/` | `FolderOpener`: reveals a folder in Finder or Explorer, behind an injectable process runner | — |
+| `state/` | `SessionController` (`ChangeNotifier` + Provider), including the per-destination counters the interface reports | all of the above |
+| `ui/` | `theme.dart` (every colour, radius and duration), `key_bindings.dart`, three screens (setup · triage · summary) and the widgets under `ui/widgets/` | `state`, `core/preview`, `core/platform` |
 
 Two things the original design assumed and the implementation did **not** need: isolates and
 on-disk thumbnails. Measurement (ADR-004) put a cold 4 MB read at ~3 ms and a cached one at
 ~5 µs, which fits inside a frame with room to spare, so the extra machinery would have bought
 complexity and nothing else.
+
+### Interface rules
+
+Three rules keep the interface out of the way of the work:
+
+- **Nothing invisible.** A disabled control keeps its border and label, and the screen states
+  what is missing. Material's default is to fade it to almost nothing, and a control the user
+  cannot see reads as a broken app rather than as a step still to do.
+- **No I/O during `build`.** Reading a file is a side effect; it happens in a post-frame
+  callback, and the preview cache is injectable so widget tests never touch a disk.
+- **Motion never gates a decision.** Transitions last 120 ms and a fresh keystroke abandons
+  the running one. `decide()` returns immediately by design; the interface must not undo that.
 
 ## The journal (the central piece)
 

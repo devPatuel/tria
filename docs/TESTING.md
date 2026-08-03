@@ -10,8 +10,9 @@ first.
 | Filesystem | `test/core/fs/` | Moves, collisions, soft trash, undo, full-session revert, the operation queue |
 | Scanner | `test/core/scanner/` | Traversal, exclusions, cloud placeholders |
 | Storage | `test/core/storage/` | Session profiles round-tripping through JSON |
-| State | `test/state/` | Cursor advance, postponed files, undo |
-| Interface | `test/ui/` | Key map and the three screens |
+| Platform | `test/core/platform/` | The command used per OS, and failing without throwing |
+| State | `test/state/` | Cursor advance, postponed files, undo, per-destination counters |
+| Interface | `test/ui/` | Theme guarantees, key map, and the three screens |
 | Performance | `test/performance/` | Preview cache and preloading |
 
 ## Rules

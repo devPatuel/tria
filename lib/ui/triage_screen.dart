@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/preview/preview_cache.dart';
+import '../domain/decision.dart';
 import '../state/session_controller.dart';
 import 'key_bindings.dart';
-import 'widgets/destination_bar.dart';
+import 'theme.dart';
+import 'widgets/destination_panel.dart';
+import 'widgets/file_meta.dart';
+import 'widgets/key_chip.dart';
 import 'widgets/preview_pane.dart';
+import 'widgets/session_progress_bar.dart';
 
 /// The screen where the whole session happens: one file, one keystroke.
 class TriageScreen extends StatefulWidget {
   /// Injectable so widget tests can run without touching the disk.
   final PreviewCache? cache;
 
-  const TriageScreen({super.key, this.cache});
+  /// Called when the user asks to see the summary.
+  final VoidCallback? onFinish;
+
+  const TriageScreen({super.key, this.cache, this.onFinish});
 
   @override
   State<TriageScreen> createState() => _TriageScreenState();
@@ -24,6 +33,12 @@ class _TriageScreenState extends State<TriageScreen> {
   late final PreviewCache _cache = widget.cache ?? PreviewCache();
   Uint8List? _bytes;
   String? _loadedPath;
+
+  /// Where the last decided file went, so the outgoing image can travel that
+  /// way. Motion that points somewhere answers "did that register, and where
+  /// did it go?" without a single word of interface.
+  Offset _exitDirection = const Offset(1, 0);
+  int? _flashedSlot;
 
   @override
   void dispose() {
@@ -57,8 +72,21 @@ class _TriageScreenState extends State<TriageScreen> {
       controller.undo();
       return;
     }
+
     final decision = decisionForKey(event.logicalKey, entry.path);
-    if (decision != null) controller.decide(decision);
+    if (decision == null) return;
+
+    setState(() {
+      _exitDirection = switch (decision.kind) {
+        DecisionKind.move => const Offset(1, 0), // toward the panel
+        DecisionKind.trash => const Offset(0, -1),
+        DecisionKind.postpone => const Offset(0, 1),
+        DecisionKind.keep => const Offset(0.4, 0),
+      };
+      _flashedSlot = decision.kind == DecisionKind.move ? decision.slot : null;
+    });
+
+    controller.decide(decision);
   }
 
   @override
@@ -69,52 +97,182 @@ class _TriageScreenState extends State<TriageScreen> {
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _syncPreview(controller));
 
-    if (controller.isFinished) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Session finished'),
-              const SizedBox(height: 16),
-              if (controller.postponed.isNotEmpty)
-                FilledButton(
-                  key: const Key('review-postponed'),
-                  onPressed: controller.startPostponedRound,
-                  child: Text('Review ${controller.postponed.length} postponed'),
-                ),
-            ],
-          ),
-        ),
-      );
-    }
+    if (controller.isFinished) return _FinishedState(controller: controller, onFinish: widget.onFinish);
 
     final entry = controller.current!;
+
     return Scaffold(
       body: KeyboardListener(
         focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: (event) => _onKey(event, controller),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          children: [
+            Expanded(
+              child: Row(
                 children: [
                   Expanded(
-                    child: Text(entry.path.split('/').last,
-                        overflow: TextOverflow.ellipsis),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.basename(controller.config.sourceRoot),
+                            style: const TextStyle(
+                              color: TriaColors.textDim,
+                              fontSize: 12,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: AnimatedSwitcher(
+                              duration: TriaMotion.decision,
+                              switchInCurve: TriaMotion.curve,
+                              switchOutCurve: TriaMotion.curve,
+                              transitionBuilder: (child, animation) {
+                                final isIncoming =
+                                    child.key == ValueKey(entry.path);
+                                final begin = isIncoming
+                                    ? -_exitDirection * 0.06
+                                    : _exitDirection * 0.35;
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: begin,
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: PreviewPane(
+                                key: ValueKey(entry.path),
+                                entry: entry,
+                                bytes: _bytes,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          FileMeta(entry: entry),
+                        ],
+                      ),
+                    ),
                   ),
-                  Text('${controller.decidedCount}/${controller.totalCount}'),
+                  DestinationPanel(
+                    destinations: controller.config.destinations,
+                    counts: controller.movedPerSlot,
+                    flashedSlot: _flashedSlot,
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Expanded(child: PreviewPane(entry: entry, bytes: _bytes)),
-              const SizedBox(height: 12),
-              DestinationBar(destinations: controller.config.destinations),
+            ),
+            _BottomBar(controller: controller),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final SessionController controller;
+
+  const _BottomBar({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+      decoration: const BoxDecoration(
+        color: TriaColors.surface,
+        border: Border(top: BorderSide(color: TriaColors.border)),
+      ),
+      child: Column(
+        children: [
+          SessionProgressBar(
+            decided: controller.decidedCount,
+            total: controller.totalCount,
+            filesPerSecond: controller.filesPerSecond,
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              _Legend(keyLabel: '↑', action: 'trash'),
+              SizedBox(width: 20),
+              _Legend(keyLabel: '↓', action: 'later'),
+              SizedBox(width: 20),
+              _Legend(keyLabel: '←', action: 'undo'),
+              SizedBox(width: 20),
+              _Legend(keyLabel: '→', action: 'keep'),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  final String keyLabel;
+  final String action;
+
+  const _Legend({required this.keyLabel, required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        KeyChip(label: keyLabel, muted: true),
+        const SizedBox(width: 8),
+        Text(action,
+            style: const TextStyle(color: TriaColors.textDim, fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _FinishedState extends StatelessWidget {
+  final SessionController controller;
+  final VoidCallback? onFinish;
+
+  const _FinishedState({required this.controller, this.onFinish});
+
+  @override
+  Widget build(BuildContext context) {
+    final postponed = controller.postponed.length;
+
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Session finished',
+                style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              '${controller.decidedCount} files decided',
+              style: const TextStyle(color: TriaColors.textDim),
+            ),
+            const SizedBox(height: 24),
+            if (postponed > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton(
+                  key: const Key('review-postponed'),
+                  onPressed: controller.startPostponedRound,
+                  child: Text('Review $postponed postponed'),
+                ),
+              ),
+            FilledButton(
+              key: const Key('view-summary'),
+              onPressed: onFinish,
+              child: const Text('View summary'),
+            ),
+          ],
         ),
       ),
     );
