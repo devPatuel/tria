@@ -11,6 +11,7 @@ import 'core/storage/app_paths.dart';
 import 'domain/session_config.dart';
 import 'state/session_controller.dart';
 import 'ui/setup_screen.dart';
+import 'ui/theme.dart';
 import 'ui/triage_screen.dart';
 
 void main() => runApp(const TriaApp());
@@ -27,7 +28,7 @@ class TriaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Tría',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
+      theme: triaDarkTheme(),
       home: Builder(
         builder: (context) => SetupScreen(
           onStart: (config) => _startSession(context, config),
