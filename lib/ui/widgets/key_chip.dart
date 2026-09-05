@@ -19,8 +19,13 @@ class KeyChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 26,
+      // Single characters get a square; longer labels like "esc" grow instead
+      // of being clipped.
+      width: label.length > 1 ? null : 26,
       height: 26,
+      padding: label.length > 1
+          ? const EdgeInsets.symmetric(horizontal: 8)
+          : EdgeInsets.zero,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: muted ? TriaColors.surfaceHigh : TriaColors.accent,

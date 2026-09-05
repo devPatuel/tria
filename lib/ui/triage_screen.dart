@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/preview/preview_cache.dart';
+import '../core/preview/preview_types.dart';
 import '../domain/decision.dart';
 import '../state/session_controller.dart';
 import 'key_bindings.dart';
@@ -51,14 +52,24 @@ class _TriageScreenState extends State<TriageScreen> {
     if (entry == null || entry.path == _loadedPath) return;
     _loadedPath = entry.path;
 
-    final bytes = await _cache.load(entry.path);
+    // Only read what the preview will actually use. A PDF is rendered from its
+    // path, and an archive is never rendered at all — reading either into
+    // memory would cost the user gigabytes for nothing.
+    final bytes = switch (previewKindFor(entry)) {
+      PreviewKind.image => await _cache.load(entry.path),
+      PreviewKind.text => await _cache.loadHead(entry.path),
+      _ => null,
+    };
     if (mounted) setState(() => _bytes = bytes);
 
-    // Warm the next few files while the user looks at this one.
+    // Warm the next few files while the user looks at this one, images only:
+    // they are the ones whose decoding would otherwise be visible.
     final upcoming = <String>[];
     for (var i = 1; i <= 3; i++) {
       final index = controller.decidedCount + i;
-      if (index < controller.totalCount) upcoming.add(controller.fileAt(index).path);
+      if (index >= controller.totalCount) break;
+      final next = controller.fileAt(index);
+      if (previewKindFor(next) == PreviewKind.image) upcoming.add(next.path);
     }
     _cache.preload(upcoming);
   }
@@ -70,6 +81,14 @@ class _TriageScreenState extends State<TriageScreen> {
 
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
       controller.undo();
+      return;
+    }
+
+    // Stopping is a normal way to end a session, not an escape hatch: nobody
+    // sorts thirty thousand files in one sitting, and the totals so far are
+    // worth seeing.
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      widget.onFinish?.call();
       return;
     }
 
@@ -169,7 +188,7 @@ class _TriageScreenState extends State<TriageScreen> {
                 ],
               ),
             ),
-            _BottomBar(controller: controller),
+            _BottomBar(controller: controller, onFinish: widget.onFinish),
           ],
         ),
       ),
@@ -179,8 +198,9 @@ class _TriageScreenState extends State<TriageScreen> {
 
 class _BottomBar extends StatelessWidget {
   final SessionController controller;
+  final VoidCallback? onFinish;
 
-  const _BottomBar({required this.controller});
+  const _BottomBar({required this.controller, this.onFinish});
 
   @override
   Widget build(BuildContext context) {
@@ -198,15 +218,23 @@ class _BottomBar extends StatelessWidget {
             filesPerSecond: controller.filesPerSecond,
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
-              _Legend(keyLabel: '↑', action: 'trash'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '↓', action: 'later'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '←', action: 'undo'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '→', action: 'keep'),
+              const _Legend(keyLabel: '↑', action: 'trash'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '↓', action: 'later'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '←', action: 'undo'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '→', action: 'keep'),
+              const Spacer(),
+              const _Legend(keyLabel: 'esc', action: 'stop'),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                key: const Key('finish-session'),
+                onPressed: onFinish,
+                child: const Text('Finish'),
+              ),
             ],
           ),
         ],

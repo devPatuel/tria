@@ -35,6 +35,10 @@ decision; Tría just gets out of the way.
 | `↓` | Postpone — asked again at the end of the session |
 | `←` | Undo the previous decision |
 | `→` | Keep in place and move on |
+| `Esc` | Stop here and see the summary |
+
+Stopping early loses nothing: files already sorted stay sorted, and reopening the same folder
+picks up where you left off, because the folder itself is the progress marker.
 
 Opening the file in the system viewer (`Enter`) and 1:1 zoom (`Space`) are designed but not
 implemented yet.

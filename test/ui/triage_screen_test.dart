@@ -68,10 +68,10 @@ void main() {
 
   tearDown(() => tmp.deleteSync(recursive: true));
 
-  Widget wrap() => MaterialApp(
+  Widget wrap({VoidCallback? onFinish}) => MaterialApp(
         home: ChangeNotifierProvider.value(
           value: controller,
-          child: TriageScreen(cache: _NoDiskCache()),
+          child: TriageScreen(cache: _NoDiskCache(), onFinish: onFinish),
         ),
       );
 
@@ -134,6 +134,36 @@ void main() {
 
     expect(find.text('undo'), findsOneWidget);
     expect(find.text('trash'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('Esc ends the session early', (tester) async {
+    var finished = false;
+    await tester.pumpWidget(wrap(onFinish: () => finished = true));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    expect(finished, isTrue,
+        reason: 'nobody sorts 30,000 files in one sitting');
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('the finish button ends the session early', (tester) async {
+    var finished = false;
+    await tester.pumpWidget(wrap(onFinish: () => finished = true));
+
+    await tester.tap(find.byKey(const Key('finish-session')));
+    await tester.pump();
+
+    expect(finished, isTrue);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('Esc decides nothing on its way out', (tester) async {
+    await tester.pumpWidget(wrap(onFinish: () {}));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    expect(find.text('0/2'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('two keystrokes inside one animation both land', (tester) async {
