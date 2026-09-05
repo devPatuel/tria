@@ -35,6 +35,24 @@ class PreviewCache {
     return bytes;
   }
 
+  /// Reads at most [maxBytes] from the start of [path], without caching.
+  ///
+  /// Text previews only ever show the first screenful, and some of the files
+  /// being sorted are logs or dumps measured in hundreds of megabytes. Reading
+  /// the whole thing to display sixty lines would trade the user's memory for
+  /// nothing.
+  Future<Uint8List?> loadHead(String path, {int maxBytes = 64 * 1024}) async {
+    final file = File(path);
+    if (!await file.exists()) return null;
+
+    final handle = await file.open();
+    try {
+      return await handle.read(maxBytes);
+    } finally {
+      await handle.close();
+    }
+  }
+
   /// Warms the cache for the files the user is about to see.
   void preload(Iterable<String> paths) {
     for (final path in paths) {

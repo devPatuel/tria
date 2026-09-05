@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:provider/provider.dart';
 
 import 'core/fs/file_mover.dart';
@@ -15,7 +16,13 @@ import 'ui/summary_screen.dart';
 import 'ui/theme.dart';
 import 'ui/triage_screen.dart';
 
-void main() => runApp(const TriaApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Not strictly required while PDFs are only shown through pdfrx widgets, but
+  // it costs one line and removes a whole class of runtime-only failure.
+  pdfrxFlutterInitialize();
+  runApp(const TriaApp());
+}
 
 /// Root widget of the application.
 ///

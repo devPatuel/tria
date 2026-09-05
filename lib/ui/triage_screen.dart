@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../core/preview/preview_cache.dart';
+import '../core/preview/preview_types.dart';
 import '../domain/decision.dart';
 import '../state/session_controller.dart';
 import 'key_bindings.dart';
@@ -51,14 +52,24 @@ class _TriageScreenState extends State<TriageScreen> {
     if (entry == null || entry.path == _loadedPath) return;
     _loadedPath = entry.path;
 
-    final bytes = await _cache.load(entry.path);
+    // Only read what the preview will actually use. A PDF is rendered from its
+    // path, and an archive is never rendered at all — reading either into
+    // memory would cost the user gigabytes for nothing.
+    final bytes = switch (previewKindFor(entry)) {
+      PreviewKind.image => await _cache.load(entry.path),
+      PreviewKind.text => await _cache.loadHead(entry.path),
+      _ => null,
+    };
     if (mounted) setState(() => _bytes = bytes);
 
-    // Warm the next few files while the user looks at this one.
+    // Warm the next few files while the user looks at this one, images only:
+    // they are the ones whose decoding would otherwise be visible.
     final upcoming = <String>[];
     for (var i = 1; i <= 3; i++) {
       final index = controller.decidedCount + i;
-      if (index < controller.totalCount) upcoming.add(controller.fileAt(index).path);
+      if (index >= controller.totalCount) break;
+      final next = controller.fileAt(index);
+      if (previewKindFor(next) == PreviewKind.image) upcoming.add(next.path);
     }
     _cache.preload(upcoming);
   }

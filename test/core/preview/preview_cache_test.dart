@@ -31,8 +31,20 @@ void main() {
     }
   });
 
+  test('classifies PDFs so their first page can be rendered', () {
+    for (final name in ['a.pdf', 'a.PDF']) {
+      expect(previewKindFor(entryFor(name)), PreviewKind.pdf, reason: name);
+    }
+  });
+
+  test('classifies readable text files', () {
+    for (final name in ['a.txt', 'a.md', 'a.csv', 'a.json', 'a.dart', 'a.LOG']) {
+      expect(previewKindFor(entryFor(name)), PreviewKind.text, reason: name);
+    }
+  });
+
   test('classifies anything else as generic', () {
-    for (final name in ['a.pdf', 'a.docx', 'a.zip', 'a']) {
+    for (final name in ['a.docx', 'a.zip', 'a.sketch', 'a']) {
       expect(previewKindFor(entryFor(name)), PreviewKind.generic, reason: name);
     }
   });
@@ -60,6 +72,28 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     expect(cache.size, 2);
+  });
+
+  test('reads only the head of a file when that is all that is needed',
+      () async {
+    writeFakeImage(tmp, 'huge.log', bytes: 200 * 1024);
+
+    final head = await cache.loadHead('${tmp.path}/huge.log', maxBytes: 4096);
+
+    expect(head!.length, 4096,
+        reason: 'a 200 MB log must never be pulled into memory whole');
+  });
+
+  test('loading the head of a small file returns all of it', () async {
+    writeFakeImage(tmp, 'small.txt', bytes: 100);
+
+    final head = await cache.loadHead('${tmp.path}/small.txt', maxBytes: 4096);
+
+    expect(head!.length, 100);
+  });
+
+  test('the head of a missing file is null, not a crash', () async {
+    expect(await cache.loadHead('${tmp.path}/ghost.txt'), isNull);
   });
 
   test('evicts the oldest entry when over capacity', () async {
