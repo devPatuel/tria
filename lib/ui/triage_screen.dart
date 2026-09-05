@@ -84,6 +84,14 @@ class _TriageScreenState extends State<TriageScreen> {
       return;
     }
 
+    // Stopping is a normal way to end a session, not an escape hatch: nobody
+    // sorts thirty thousand files in one sitting, and the totals so far are
+    // worth seeing.
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      widget.onFinish?.call();
+      return;
+    }
+
     final decision = decisionForKey(event.logicalKey, entry.path);
     if (decision == null) return;
 
@@ -180,7 +188,7 @@ class _TriageScreenState extends State<TriageScreen> {
                 ],
               ),
             ),
-            _BottomBar(controller: controller),
+            _BottomBar(controller: controller, onFinish: widget.onFinish),
           ],
         ),
       ),
@@ -190,8 +198,9 @@ class _TriageScreenState extends State<TriageScreen> {
 
 class _BottomBar extends StatelessWidget {
   final SessionController controller;
+  final VoidCallback? onFinish;
 
-  const _BottomBar({required this.controller});
+  const _BottomBar({required this.controller, this.onFinish});
 
   @override
   Widget build(BuildContext context) {
@@ -209,15 +218,23 @@ class _BottomBar extends StatelessWidget {
             filesPerSecond: controller.filesPerSecond,
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
-              _Legend(keyLabel: '↑', action: 'trash'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '↓', action: 'later'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '←', action: 'undo'),
-              SizedBox(width: 20),
-              _Legend(keyLabel: '→', action: 'keep'),
+              const _Legend(keyLabel: '↑', action: 'trash'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '↓', action: 'later'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '←', action: 'undo'),
+              const SizedBox(width: 20),
+              const _Legend(keyLabel: '→', action: 'keep'),
+              const Spacer(),
+              const _Legend(keyLabel: 'esc', action: 'stop'),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                key: const Key('finish-session'),
+                onPressed: onFinish,
+                child: const Text('Finish'),
+              ),
             ],
           ),
         ],

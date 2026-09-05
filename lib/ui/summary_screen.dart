@@ -150,10 +150,24 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     count: _trashCount,
                     muted: true,
                     danger: true,
-                    action: FilledButton.tonal(
-                      key: const Key('empty-trash'),
-                      onPressed: _trashCount == 0 ? null : _confirmEmpty,
-                      child: const Text('Empty…'),
+                    // Looking before deleting must be at least as easy as
+                    // deleting: emptying is the only irreversible action here.
+                    action: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton.icon(
+                          key: const Key('open-trash'),
+                          icon: const Icon(Icons.folder_open, size: 16),
+                          label: const Text('Open folder'),
+                          onPressed: () => _open(widget.trash.trashPath),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          key: const Key('empty-trash'),
+                          onPressed: _trashCount == 0 ? null : _confirmEmpty,
+                          child: const Text('Empty…'),
+                        ),
+                      ],
                     ),
                   ),
                 ],

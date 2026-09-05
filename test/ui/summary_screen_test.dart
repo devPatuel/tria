@@ -118,6 +118,18 @@ void main() {
     expect(opener.revealed.single, '/sorted/family');
   }, timeout: const Timeout(Duration(seconds: 30)));
 
+  testWidgets('the trash can be inspected before it is emptied',
+      (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.byKey(const Key('open-trash')));
+    await tester.pumpAndSettle();
+
+    expect(opener.revealed.single, '/nowhere',
+        reason: 'deleting 300 files should not be the only thing you can do '
+            'with them');
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
   testWidgets('emptying the trash asks for confirmation first', (tester) async {
     await pumpScreen(tester);
 

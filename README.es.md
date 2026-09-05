@@ -37,6 +37,10 @@ Tría solo se aparta del camino.
 | `↓` | Posponer — se vuelve a preguntar al final de la sesión |
 | `←` | Deshacer la decisión anterior |
 | `→` | Dejar donde está y seguir |
+| `Esc` | Parar aquí y ver el resumen |
+
+Parar a medias no pierde nada: lo ya clasificado sigue clasificado, y al volver a abrir la
+misma carpeta continúas donde lo dejaste, porque la carpeta misma es el marcador de progreso.
 
 Abrir el archivo en el visor del sistema (`Intro`) y el zoom 1:1 (`Espacio`) están diseñados
 pero todavía no implementados.

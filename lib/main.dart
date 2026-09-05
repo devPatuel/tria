@@ -55,14 +55,15 @@ class TriaApp extends StatelessWidget {
     final mover = FileMover();
     final trash = SoftTrash(config.trashPath, mover);
     final reverter = Reverter(journal, mover);
+    final queue = OperationQueue(
+      config: config,
+      journal: journal,
+      mover: mover,
+      trash: trash,
+    );
     final controller = SessionController(
       config: config,
-      queue: OperationQueue(
-        config: config,
-        journal: journal,
-        mover: mover,
-        trash: trash,
-      ),
+      queue: queue,
       reverter: reverter,
       scanner: FileScanner(),
     );
@@ -75,22 +76,27 @@ class TriaApp extends StatelessWidget {
       builder: (_) => ChangeNotifierProvider.value(
         value: controller,
         child: TriageScreen(
-          onFinish: () => navigator.push(MaterialPageRoute(
-            builder: (_) => SummaryScreen(
-              trash: trash,
-              reverter: reverter,
-              sessionId: config.id,
-              destinations: config.destinations,
-              movedPerSlot: controller.movedPerSlot,
-              keptCount: controller.keptCount,
-              decidedCount: controller.decidedCount,
-              elapsed: controller.elapsed,
-              // Back to the very first screen: a finished session is done, and
-              // its controller and queue go with it.
-              onNewSession: () =>
-                  navigator.popUntil((route) => route.isFirst),
-            ),
-          )),
+          onFinish: () async {
+            // The last decisions may still be in flight; the summary counts
+            // what is on disk, so it must wait for the disk.
+            await queue.drain();
+            navigator.push(MaterialPageRoute(
+              builder: (_) => SummaryScreen(
+                trash: trash,
+                reverter: reverter,
+                sessionId: config.id,
+                destinations: config.destinations,
+                movedPerSlot: controller.movedPerSlot,
+                keptCount: controller.keptCount,
+                decidedCount: controller.decidedCount,
+                elapsed: controller.elapsed,
+                // Back to the very first screen: a finished session is done,
+                // and its controller and queue go with it.
+                onNewSession: () =>
+                    navigator.popUntil((route) => route.isFirst),
+              ),
+            ));
+          },
         ),
       ),
     ));
