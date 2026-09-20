@@ -1,5 +1,5 @@
 name: tria
-description: "A new Flutter project."
+description: "Sort thousands of files into folders, one keystroke at a time — and undo any of it."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
