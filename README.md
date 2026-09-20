@@ -64,6 +64,12 @@ abrir las carpetas resultantes en Finder o en el Explorador.
 
 ![Pantalla de resumen](docs/img/summary.png)
 
+La papelera es blanda: nada se borra al pulsar `↑`, los archivos se apartan a una carpeta
+y siguen ahí hasta que tú decides. Vaciarla es la única acción de Tría que no se puede
+deshacer, y es la única que pide confirmación diciendo exactamente qué se pierde.
+
+![Confirmación antes de vaciar la papelera](docs/img/trash.png)
+
 ## Cómo funciona por dentro
 
 La pieza central es un **diario append-only**. Cada pulsación escribe primero la

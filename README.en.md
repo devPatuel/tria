@@ -63,6 +63,12 @@ lets you open the resulting folders in Finder or Explorer.
 
 ![Summary screen](docs/img/summary.png)
 
+The trash is soft: pressing `↑` deletes nothing, it moves the file aside into a folder
+where it stays until you say otherwise. Emptying it is the only action in Tría that cannot
+be undone, and the only one that asks for confirmation, stating exactly what is lost.
+
+![Confirmation before emptying the trash](docs/img/trash.png)
+
 ## How it works inside
 
 The central piece is an **append-only journal**. Every keystroke first writes the *intent*
