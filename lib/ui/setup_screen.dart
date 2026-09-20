@@ -15,7 +15,15 @@ class SetupScreen extends StatefulWidget {
   /// Injected so the screen's own tests never touch the disk.
   final FolderAccess? access;
 
-  const SetupScreen({super.key, required this.onStart, this.access});
+  /// Injected so the screen's own tests never open a real system dialog.
+  final Future<String?> Function()? pickFolder;
+
+  const SetupScreen({
+    super.key,
+    required this.onStart,
+    this.access,
+    this.pickFolder,
+  });
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -36,17 +44,24 @@ class _SetupScreenState extends State<SetupScreen> {
   ///
   /// On macOS this is not cosmetic: picking a folder through the system dialog
   /// is what grants a sandboxed app access to it. A path typed by hand grants
-  /// nothing, and the session would come up empty.
+  /// nothing, whatever its permissions on disk say — which is why both path
+  /// fields are read-only and route every tap back here.
   Future<void> _pickSourceFolder() async {
-    final path = await getDirectoryPath();
+    final path = await (widget.pickFolder ?? getDirectoryPath)();
     if (path == null || !mounted) return;
-    setState(() => _sourceController.text = path);
+    setState(() {
+      _sourceController.text = path;
+      _error = null;
+    });
   }
 
   Future<void> _pickDestinationFolder() async {
-    final path = await getDirectoryPath();
+    final path = await (widget.pickFolder ?? getDirectoryPath)();
     if (path == null || !mounted) return;
-    setState(() => _pathController.text = path);
+    setState(() {
+      _pathController.text = path;
+      _error = null;
+    });
   }
 
   void _addDestination() {
@@ -132,8 +147,8 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _checking = false);
 
     if (problem != null) {
-      setState(() => _error = '$problem cannot be written to. '
-          'If it is an external drive, check that it is not read-only.');
+      setState(() => _error = '$problem cannot be written to. Choose folder '
+          'again: macOS only grants access to folders picked in its dialog.');
       return;
     }
 
@@ -181,10 +196,12 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: TextField(
                           key: const Key('source-root'),
                           controller: _sourceController,
+                          readOnly: true,
+                          onTap: _pickSourceFolder,
                           decoration: const InputDecoration(
                             labelText: 'Folder to sort',
+                            hintText: 'Choose a folder…',
                           ),
-                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -237,7 +254,12 @@ class _SetupScreenState extends State<SetupScreen> {
                           child: TextField(
                             key: const Key('destination-path'),
                             controller: _pathController,
-                            decoration: const InputDecoration(labelText: 'Folder'),
+                            readOnly: true,
+                            onTap: _pickDestinationFolder,
+                            decoration: const InputDecoration(
+                              labelText: 'Folder',
+                              hintText: 'Choose a folder…',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
