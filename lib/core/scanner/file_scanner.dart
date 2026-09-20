@@ -28,6 +28,10 @@ class FileScanner {
 
       final name = p.basename(entity.path);
       if (name == '.DS_Store') continue;
+      // macOS stores the metadata of every file it touches on exFAT or NTFS in
+      // a sidecar named `._name`, so a folder used on an external drive holds
+      // one of these per real file. They are not the user's files to sort.
+      if (name.startsWith('._')) continue;
 
       final stat = await entity.stat();
       yield FileEntry(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 import '../core/fs/reverter.dart';
 import '../core/fs/soft_trash.dart';
 import '../core/platform/folder_opener.dart';
 import '../domain/destination.dart';
+import '../domain/journal_entry.dart';
 import 'theme.dart';
 import 'widgets/key_chip.dart';
 
@@ -22,6 +24,11 @@ class SummaryScreen extends StatefulWidget {
   final Map<int, int> movedPerSlot;
   final int keptCount;
   final int decidedCount;
+
+  /// Operations the disk refused. Silence here would be the worst failure the
+  /// app can have: the user would believe these files are sorted.
+  final List<JournalEntry> failures;
+
   final Duration elapsed;
 
   final FolderOpener? opener;
@@ -36,6 +43,7 @@ class SummaryScreen extends StatefulWidget {
     this.movedPerSlot = const {},
     this.keptCount = 0,
     this.decidedCount = 0,
+    this.failures = const [],
     this.elapsed = Duration.zero,
     this.opener,
     this.onNewSession,
@@ -96,6 +104,44 @@ class _SummaryScreenState extends State<SummaryScreen> {
     });
   }
 
+  Future<void> _showFailures() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${widget.failures.length} files stayed where they were'),
+        content: SizedBox(
+          width: 420,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final failure in widget.failures)
+                ListTile(
+                  dense: true,
+                  title: Text(p.basename(failure.sourcePath)),
+                  subtitle: Text(_reason(failure.errorMessage)),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Turns the stored [MoveError] name into something a person can act on.
+  String _reason(String? code) => switch (code) {
+        'destinationNotWritable' => 'The destination folder could not be written to',
+        'sourceMissing' => 'The file was no longer there',
+        'diskFull' => 'The disk is full',
+        'verificationFailed' => 'The copy did not match the original',
+        _ => 'The file could not be moved',
+      };
+
   Future<void> _revertSession() async {
     final reverted = await widget.reverter.revertSession(widget.sessionId);
     if (!mounted) return;
@@ -144,6 +190,18 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     count: widget.keptCount,
                     muted: true,
                   ),
+                  if (widget.failures.isNotEmpty)
+                    DestinationTotalRow(
+                      keyLabel: '!',
+                      label: 'Could not be moved',
+                      count: widget.failures.length,
+                      danger: true,
+                      action: OutlinedButton(
+                        key: const Key('show-failures'),
+                        onPressed: _showFailures,
+                        child: const Text('See which'),
+                      ),
+                    ),
                   DestinationTotalRow(
                     keyLabel: '↑',
                     label: 'Trash',

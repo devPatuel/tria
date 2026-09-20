@@ -127,6 +127,8 @@ class _TriageScreenState extends State<TriageScreen> {
         onKeyEvent: (event) => _onKey(event, controller),
         child: Column(
           children: [
+            if (controller.failures.isNotEmpty)
+              _FailureBanner(count: controller.failures.length),
             Expanded(
               child: Row(
                 children: [
@@ -191,6 +193,42 @@ class _TriageScreenState extends State<TriageScreen> {
             _BottomBar(controller: controller, onFinish: widget.onFinish),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tells the user, mid-session, that the disk refused a file.
+///
+/// The queue works behind the interface, so without this the session would go
+/// on at two decisions per second over a destination that accepts nothing and
+/// the user would only find out at the end, or never.
+class _FailureBanner extends StatelessWidget {
+  final int count;
+
+  const _FailureBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final plural = count == 1 ? 'file' : 'files';
+    return Container(
+      key: const Key('failure-banner'),
+      width: double.infinity,
+      color: TriaColors.danger.withValues(alpha: 0.18),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: TriaColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$count $plural could not be moved and stayed where they were. '
+              'Check the destination folder.',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }

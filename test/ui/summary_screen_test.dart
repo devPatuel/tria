@@ -5,7 +5,9 @@ import 'package:tria/core/fs/reverter.dart';
 import 'package:tria/core/fs/soft_trash.dart';
 import 'package:tria/core/journal/journal.dart';
 import 'package:tria/core/platform/folder_opener.dart';
+import 'package:tria/domain/decision.dart';
 import 'package:tria/domain/destination.dart';
+import 'package:tria/domain/journal_entry.dart';
 import 'package:tria/ui/summary_screen.dart';
 
 import 'dart:io';
@@ -65,9 +67,13 @@ void main() {
     opener = _FakeOpener();
   });
 
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    List<JournalEntry> failures = const [],
+  }) async {
     await tester.pumpWidget(MaterialApp(
       home: SummaryScreen(
+        failures: failures,
         trash: trash,
         reverter: reverter,
         sessionId: 's1',
@@ -172,5 +178,30 @@ void main() {
 
     expect(reverter.revertedSession, isTrue);
     expect(find.text('Put 7 files back where they were'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('a session with no failures says nothing about them', (tester) async {
+    await pumpScreen(tester);
+
+    expect(find.text('Could not be moved'), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('files the disk refused are reported, not hidden', (tester) async {
+    await pumpScreen(tester, failures: [
+      JournalEntry(
+        id: 's1-0',
+        sessionId: 's1',
+        kind: DecisionKind.move,
+        sourcePath: '/source/a.jpg',
+        status: OperationStatus.failed,
+        timestamp: DateTime(2026, 9, 20),
+        errorMessage: 'destinationNotWritable',
+      ),
+    ]);
+
+    final row = tester.widget<DestinationTotalRow>(
+        find.widgetWithText(DestinationTotalRow, 'Could not be moved'));
+    expect(row.count, 1);
+    expect(row.danger, isTrue);
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

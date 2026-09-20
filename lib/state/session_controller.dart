@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
@@ -6,6 +8,7 @@ import '../core/fs/reverter.dart';
 import '../core/scanner/file_scanner.dart';
 import '../domain/decision.dart';
 import '../domain/file_entry.dart';
+import '../domain/journal_entry.dart';
 import '../domain/session_config.dart';
 
 /// Drives one sorting session: which file is on screen, what the user decided,
@@ -28,6 +31,9 @@ class SessionController extends ChangeNotifier {
   final List<Decision> _history = [];
   var _cursor = 0;
 
+  final List<JournalEntry> _failures = [];
+  StreamSubscription<JournalEntry>? _failureSubscription;
+
   final Map<int, int> _movedPerSlot = {};
   var _trashedCount = 0;
   var _keptCount = 0;
@@ -46,7 +52,16 @@ class SessionController extends ChangeNotifier {
     for (final destination in config.destinations) {
       _movedPerSlot[destination.slot] = 0;
     }
+    // Nothing else listens to the queue, so an unheard failure is a file the
+    // user believes is sorted and is not: the session has to know about it.
+    _failureSubscription = queue.failures.listen((entry) {
+      _failures.add(entry);
+      notifyListeners();
+    });
   }
+
+  /// Operations the disk refused, in the order they failed.
+  List<JournalEntry> get failures => List.unmodifiable(_failures);
 
   /// Scans the source folder and positions the cursor on the first file.
   Future<void> start() async {
@@ -160,6 +175,7 @@ class SessionController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _failureSubscription?.cancel();
     queue.dispose();
     super.dispose();
   }
