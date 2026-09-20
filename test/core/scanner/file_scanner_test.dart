@@ -73,4 +73,14 @@ void main() {
 
     expect(entry.isCloudPlaceholder, isTrue);
   });
+
+  test('ignores the AppleDouble sidecars macOS writes on exFAT', () async {
+    writeFakeImage(tmp, 'a.jpg');
+    File('${tmp.path}/._a.jpg').writeAsBytesSync(List.filled(82, 0));
+
+    final found = await scanner.scan(tmp.path, recursive: false).toList();
+
+    expect(found.single.path, endsWith('a.jpg'));
+    expect(found.single.path, isNot(contains('._')));
+  });
 }

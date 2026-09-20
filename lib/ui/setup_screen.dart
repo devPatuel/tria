@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../core/fs/folder_access.dart';
 import '../domain/destination.dart';
 import '../domain/session_config.dart';
 import 'theme.dart';
@@ -11,7 +12,10 @@ import 'widgets/key_chip.dart';
 class SetupScreen extends StatefulWidget {
   final void Function(SessionConfig) onStart;
 
-  const SetupScreen({super.key, required this.onStart});
+  /// Injected so the screen's own tests never touch the disk.
+  final FolderAccess? access;
+
+  const SetupScreen({super.key, required this.onStart, this.access});
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -24,6 +28,9 @@ class _SetupScreenState extends State<SetupScreen> {
   final _destinations = <Destination>[];
   var _recursive = true;
   String? _error;
+  var _checking = false;
+
+  late final FolderAccess _access = widget.access ?? FolderAccess();
 
   /// Opens the system folder dialog.
   ///
@@ -81,19 +88,55 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   bool get _canStart =>
-      _sourceController.text.isNotEmpty && _destinations.isNotEmpty;
+      !_checking &&
+      _sourceController.text.isNotEmpty &&
+      _destinations.isNotEmpty;
 
   /// Why the session cannot start, in the user's terms.
   ///
   /// A disabled button with no explanation is the single most common way an
   /// interface reads as broken.
   String? get _blockingReason {
+    if (_error != null) return _error;
+    if (_checking) return 'Checking the folders…';
     if (_sourceController.text.isEmpty) return 'Choose a source folder to start';
     if (_destinations.isEmpty) return 'Add at least one destination';
     return null;
   }
 
-  void _start() {
+  /// Checks every folder before the session exists.
+  ///
+  /// A move needs write access on both ends, and a drive mounted read-only
+  /// accepts none of it while still looking normal. Finding that out here
+  /// costs a moment; finding it out mid-session means hundreds of decisions
+  /// that went nowhere.
+  Future<void> _start() async {
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+
+    final source = _sourceController.text;
+    var problem =
+        await _access.isWritable(source) ? null : 'The source folder ($source)';
+    if (problem == null) {
+      for (final destination in _destinations) {
+        if (!await _access.isWritable(destination.path)) {
+          problem = '${destination.label} (${destination.path})';
+          break;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _checking = false);
+
+    if (problem != null) {
+      setState(() => _error = '$problem cannot be written to. '
+          'If it is an external drive, check that it is not read-only.');
+      return;
+    }
+
     widget.onStart(SessionConfig(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sourceRoot: _sourceController.text,
@@ -212,14 +255,6 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                       ],
                     ),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: TriaColors.danger),
-                        ),
-                      ),
                     const SizedBox(height: 8),
                     Expanded(
                       child: _destinations.isEmpty
@@ -255,12 +290,25 @@ class _SetupScreenState extends State<SetupScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline,
-                            size: 16, color: TriaColors.textDim),
+                        Icon(
+                          _error == null
+                              ? Icons.info_outline
+                              : Icons.warning_amber_rounded,
+                          size: 16,
+                          color: _error == null
+                              ? TriaColors.textDim
+                              : TriaColors.danger,
+                        ),
                         const SizedBox(width: 8),
-                        Text(
-                          reason,
-                          style: const TextStyle(color: TriaColors.textDim),
+                        Expanded(
+                          child: Text(
+                            reason,
+                            style: TextStyle(
+                              color: _error == null
+                                  ? TriaColors.textDim
+                                  : TriaColors.danger,
+                            ),
+                          ),
                         ),
                       ],
                     ),

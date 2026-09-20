@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tria/core/fs/folder_access.dart';
 import 'package:tria/domain/session_config.dart';
 import 'package:tria/ui/setup_screen.dart';
 
+/// The screen is about the decision, not the disk: whether a folder is really
+/// writable is covered by `test/core/fs/folder_access_test.dart`.
+class _FakeAccess extends FolderAccess {
+  final Set<String> unwritable;
+
+  _FakeAccess({this.unwritable = const {}});
+
+  @override
+  Future<bool> isWritable(String path) async => !unwritable.contains(path);
+}
+
 void main() {
-  Widget wrap(void Function(SessionConfig) onStart) =>
-      MaterialApp(home: SetupScreen(onStart: onStart));
+  Widget wrap(void Function(SessionConfig) onStart, {FolderAccess? access}) =>
+      MaterialApp(
+        home: SetupScreen(
+          onStart: onStart,
+          access: access ?? _FakeAccess(),
+        ),
+      );
 
   testWidgets('cannot start without a source folder', (tester) async {
     await tester.pumpWidget(wrap((_) {}));
@@ -81,5 +98,46 @@ void main() {
     expect(find.widgetWithText(ListTile, 'D9'), findsOneWidget);
     expect(find.widgetWithText(ListTile, 'D10'), findsNothing);
     expect(find.text('All nine slots are taken'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('refuses to start when the destination cannot be written to',
+      (tester) async {
+    SessionConfig? started;
+    await tester.pumpWidget(wrap(
+      (c) => started = c,
+      access: _FakeAccess(unwritable: {'/sorted'}),
+    ));
+
+    await tester.enterText(find.byKey(const Key('source-root')), '/photos');
+    await tester.enterText(find.byKey(const Key('destination-label')), 'Family');
+    await tester.enterText(find.byKey(const Key('destination-path')), '/sorted');
+    await tester.tap(find.byKey(const Key('add-destination')));
+    await tester.pump();
+    await tester.tap(find.text('Start sorting'));
+    await tester.pumpAndSettle();
+
+    expect(started, isNull);
+    expect(find.textContaining('Family'), findsWidgets);
+    expect(find.textContaining('cannot be written to'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('refuses to start when the source folder is read-only',
+      (tester) async {
+    SessionConfig? started;
+    await tester.pumpWidget(wrap(
+      (c) => started = c,
+      access: _FakeAccess(unwritable: {'/photos'}),
+    ));
+
+    await tester.enterText(find.byKey(const Key('source-root')), '/photos');
+    await tester.enterText(find.byKey(const Key('destination-label')), 'Family');
+    await tester.enterText(find.byKey(const Key('destination-path')), '/sorted');
+    await tester.tap(find.byKey(const Key('add-destination')));
+    await tester.pump();
+    await tester.tap(find.text('Start sorting'));
+    await tester.pumpAndSettle();
+
+    expect(started, isNull);
+    expect(find.textContaining('cannot be written to'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

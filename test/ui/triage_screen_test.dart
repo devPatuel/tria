@@ -11,7 +11,9 @@ import 'package:tria/core/fs/soft_trash.dart';
 import 'package:tria/core/preview/preview_cache.dart';
 import 'package:tria/core/journal/journal.dart';
 import 'package:tria/core/scanner/file_scanner.dart';
+import 'package:tria/domain/decision.dart';
 import 'package:tria/domain/destination.dart';
+import 'package:tria/domain/journal_entry.dart';
 import 'package:tria/domain/session_config.dart';
 import 'package:tria/state/session_controller.dart';
 import 'package:tria/ui/triage_screen.dart';
@@ -30,9 +32,34 @@ class _NoDiskCache extends PreviewCache {
   void preload(Iterable<String> paths) {}
 }
 
+/// A session that has already had an operation refused by the disk. Whether
+/// the controller really hears the queue is covered by its own test.
+class _ControllerWithFailure extends SessionController {
+  _ControllerWithFailure({
+    required super.config,
+    required super.queue,
+    required super.reverter,
+    required super.scanner,
+  });
+
+  @override
+  List<JournalEntry> get failures => [
+        JournalEntry(
+          id: 's1-0',
+          sessionId: 's1',
+          kind: DecisionKind.move,
+          sourcePath: '/source/a.jpg',
+          status: OperationStatus.failed,
+          timestamp: DateTime(2026, 9, 20),
+          errorMessage: 'destinationNotWritable',
+        ),
+      ];
+}
+
 void main() {
   late Directory tmp;
   late SessionController controller;
+  late SessionController failing;
   late OperationQueue queue;
 
   setUp(() async {
@@ -64,6 +91,14 @@ void main() {
       scanner: FileScanner(),
     );
     await controller.start();
+
+    failing = _ControllerWithFailure(
+      config: config,
+      queue: queue,
+      reverter: Reverter(journal, mover),
+      scanner: FileScanner(),
+    );
+    await failing.start();
   });
 
   tearDown(() => tmp.deleteSync(recursive: true));
@@ -178,5 +213,26 @@ void main() {
     // that the second keystroke was not swallowed by the running animation.
     expect(find.text('2 files decided'), findsOneWidget,
         reason: 'the animation must never gate a decision');
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('a session with nothing refused shows no warning', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pump();
+
+    expect(find.byKey(const Key('failure-banner')), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('warns during the session when the disk refuses a file',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: ChangeNotifierProvider.value(
+        value: failing,
+        child: TriageScreen(cache: _NoDiskCache()),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byKey(const Key('failure-banner')), findsOneWidget);
+    expect(find.textContaining('1 file could not be moved'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

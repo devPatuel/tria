@@ -90,6 +90,7 @@ class TriaApp extends StatelessWidget {
                 keptCount: controller.keptCount,
                 decidedCount: controller.decidedCount,
                 elapsed: controller.elapsed,
+                failures: controller.failures,
                 // Back to the very first screen: a finished session is done,
                 // and its controller and queue go with it.
                 onNewSession: () =>

@@ -19,7 +19,11 @@ void main() {
     mover = FileMover();
   });
 
-  tearDown(() => tmp.deleteSync(recursive: true));
+  tearDown(() {
+    // A read-only folder cannot be deleted until it is writable again.
+    Process.runSync('chmod', ['-R', 'u+w', tmp.path]);
+    tmp.deleteSync(recursive: true);
+  });
 
   test('moves a file into the target folder', () async {
     writeFakeImage(source, 'IMG_0042.jpg');
@@ -79,4 +83,18 @@ void main() {
 
     expect(File('${target.path}/a.jpg').lastModifiedSync().toUtc(), when);
   });
+
+  test('a read-only destination is reported as such, not as unknown', () async {
+    writeFakeImage(source, 'IMG_0042.jpg');
+    // An existing folder Tría cannot write to: a drive that turned read-only
+    // mid-session, which is how this fails in the real world.
+    Process.runSync('chmod', ['500', target.path]);
+
+    final result = await mover.move('${source.path}/IMG_0042.jpg', target.path);
+
+    expect(result.ok, isFalse);
+    expect(result.error, MoveError.destinationNotWritable);
+    expect(File('${source.path}/IMG_0042.jpg').existsSync(), isTrue,
+        reason: 'a failed move must never lose the original');
+  }, skip: Platform.isWindows ? 'chmod is POSIX only' : null);
 }

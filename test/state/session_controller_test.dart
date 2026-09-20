@@ -132,4 +132,47 @@ void main() {
 
     expect(notifications, greaterThan(0));
   });
+
+  test('a move that fails is surfaced instead of being swallowed', () async {
+    // A file sitting where the destination folder should be makes the move
+    // fail the same way a read-only drive does.
+    File('${tmp.path}/blocked').writeAsStringSync('not a folder');
+    final blockedConfig = SessionConfig(
+      id: 's2',
+      sourceRoot: source.path,
+      recursive: true,
+      destinations: [
+        Destination(slot: 1, label: 'Family', path: '${tmp.path}/blocked/family'),
+      ],
+    );
+    final journal = JsonlJournal(File('${tmp.path}/journal2.jsonl'));
+    final mover = FileMover();
+    final blockedQueue = OperationQueue(
+      config: blockedConfig,
+      journal: journal,
+      mover: mover,
+      trash: SoftTrash(blockedConfig.trashPath, mover),
+    );
+    final blocked = SessionController(
+      config: blockedConfig,
+      queue: blockedQueue,
+      reverter: Reverter(journal, mover),
+      scanner: FileScanner(),
+    );
+    await blocked.start();
+    var notified = 0;
+    blocked.addListener(() => notified++);
+
+    blocked.decide(Decision(
+      kind: DecisionKind.move,
+      sourcePath: blocked.current!.path,
+      slot: 1,
+    ));
+    await blockedQueue.drain();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(blocked.failures.length, 1);
+    expect(blocked.failures.single.kind, DecisionKind.move);
+    expect(notified, greaterThan(1), reason: 'the interface must be told');
+  });
 }
