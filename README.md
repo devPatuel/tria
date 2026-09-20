@@ -106,8 +106,24 @@ Detalle completo en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Descargar
 
-Todavía no hay binarios publicados. De momento la vía es compilar desde el código fuente,
-que son tres comandos. Los ejecutables para macOS y Windows llegarán en una release futura.
+Descarga la última versión desde la [página de releases](https://github.com/devPatuel/tria/releases/latest):
+
+| Sistema | Archivo |
+|---|---|
+| macOS (Apple Silicon e Intel) | `tria-macos.zip` |
+| Windows (x64) | `tria-windows.zip` |
+
+**Los binarios no están firmados**, así que el sistema avisará la primera vez:
+
+- **macOS**: clic derecho sobre `tria.app` → *Abrir* → *Abrir*. Un doble clic normal no
+  basta la primera vez. A partir de ahí se abre como cualquier otra app.
+- **Windows**: SmartScreen mostrará un aviso → *Más información* → *Ejecutar de todos modos*.
+
+Firmar y notarizar exige una cuenta de desarrollador de Apple, que cuesta dinero cada año.
+Mientras el proyecto no tenga usuarios que lo justifiquen, la decisión es no pagarla y
+documentar el rodeo aquí.
+
+Si prefieres no fiarte de un binario sin firmar, compila desde el código: son tres comandos.
 
 ## Ejecutar desde el código
 

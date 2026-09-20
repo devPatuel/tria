@@ -106,8 +106,24 @@ Full detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Download
 
-There are no published binaries yet. For now the way in is building from source, which is
-three commands. macOS and Windows executables will come in a future release.
+Grab the latest version from the [releases page](https://github.com/devPatuel/tria/releases/latest):
+
+| System | File |
+|---|---|
+| macOS (Apple Silicon and Intel) | `tria-macos.zip` |
+| Windows (x64) | `tria-windows.zip` |
+
+**The binaries are unsigned**, so the system will warn you the first time:
+
+- **macOS**: right-click `tria.app` → *Open* → *Open*. A plain double click will not do on
+  the first launch. After that it opens like any other app.
+- **Windows**: SmartScreen will warn you → *More info* → *Run anyway*.
+
+Signing and notarising requires a paid Apple Developer account, renewed every year. Until
+the project has users that justify it, the decision is not to pay for one and to document
+the detour here instead.
+
+If you would rather not trust an unsigned binary, build from source: it is three commands.
 
 ## Running from source
 
