@@ -1,13 +1,12 @@
 # Testing strategy
 
-Test-driven development (TDD): every task in the implementation plan wrote its failing tests
-first.
+Test-first: every change starts with a test that fails for the right reason.
 
 | Level | Where | What it covers |
 |---|---|---|
 | Domain | `test/domain/` | Model invariants, no I/O |
 | Journal | `test/core/journal/` | Appending, reading, truncated final lines, crash recovery |
-| Filesystem | `test/core/fs/` | Moves, collisions, soft trash, undo, full-session revert, the operation queue |
+| Filesystem | `test/core/fs/` | Moves, collisions, read-only destinations, soft trash, undo, full-session revert, the operation queue, the writability check |
 | Scanner | `test/core/scanner/` | Traversal, exclusions, cloud placeholders |
 | Storage | `test/core/storage/` | Session profiles round-tripping through JSON |
 | Platform | `test/core/platform/` | The command used per OS, and failing without throwing |
@@ -26,10 +25,11 @@ first.
 ## Widget tests never touch the disk
 
 A `testWidgets` body runs on a fake clock where real file operations never complete. Two
-consequences, both learned the hard way:
+consequences:
 
 - Screens take their collaborators by injection, and the tests pass doubles
-  (`TriageScreen(cache: ...)`, `SummaryScreen(trash: ..., reverter: ...)`).
+  (`TriageScreen(cache: ...)`, `SummaryScreen(trash: ..., reverter: ...)`,
+  `SetupScreen(access: ..., pickFolder: ...)`).
 - Never `await tester.runAsync(() => queue.drain())`. The future was created in the fake
   zone while `runAsync` runs in the real one, so the test deadlocks until it times out —
   which reads as a hang, not as a failure. Plain `test()` bodies can await real I/O freely,

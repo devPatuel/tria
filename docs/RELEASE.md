@@ -32,6 +32,7 @@ app has no users yet.
 ## Restoring
 
 Tría has no server and no database. "Restoring" means reinstalling the binary. The user's
-session journals live in their own data directory (`~/Library/Application Support/Tria` on
-macOS, `%APPDATA%\Tria` on Windows) and are never touched by an install or an uninstall —
-which is what makes it possible to revert a session days later, with a newer build.
+session journals live in the app's data directory (see
+[ARCHITECTURE.md](ARCHITECTURE.md#persistence)) and are never touched by an install or an
+uninstall — which is what makes it possible to revert a session days later, with a newer
+build.

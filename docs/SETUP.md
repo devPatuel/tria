@@ -37,7 +37,5 @@ flutter test
 dart analyze --fatal-infos
 ```
 
-The core of the application (`domain/`, `core/journal/`, `core/fs/`, `core/scanner/`,
-`core/preview/`) is plain Dart and does not depend on Flutter, so its tests run without Xcode
-or Visual Studio installed — only the Dart SDK is needed. Widget and integration tests that
-do touch `ui/` or `state/` need the full Flutter toolchain for the matching platform.
+What each suite covers, and which parts run without the platform toolchain, is in
+[TESTING.md](TESTING.md).

@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 /// Resolves where Tría keeps its own data.
 ///
-/// Journals, profiles and thumbnail caches live in the OS application-support
+/// Journals and profiles live in the OS application-support
 /// directory, never beside the user's files and never inside the repository:
 /// a session file carries full paths and would leak personal data.
 class AppPaths {
