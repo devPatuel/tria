@@ -49,3 +49,15 @@ The core (`domain/`, `core/journal/`, `core/fs/`, `core/scanner/`, `core/preview
 `core/storage/`) is pure Dart with no dependency on Flutter, so its tests run without Xcode
 or Visual Studio installed — only the Dart SDK is required. Widget tests under `test/ui/`
 need the full Flutter toolchain.
+
+## Both platforms, on every push
+
+CI (`.github/workflows/ci.yml`) runs the analyzer and the whole suite on `macos-latest` and
+`windows-latest`. The first Windows run failed six tests, none of them in the app, and the
+two lessons stay here so they are not relearnt:
+
+- **Build expected paths with `p.join`**, never with `'$dir/name'`. The code joins with the
+  platform separator, so a hand-written `/` only matches on macOS.
+- **Windows will not delete an open file.** macOS lets a `tearDown` remove a temp folder
+  whose journal is still open; Windows fails with errno 32. A test that deliberately leaves
+  an operation unawaited must tolerate that in its cleanup.

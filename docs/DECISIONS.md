@@ -13,6 +13,7 @@
 | [ADR-002](#adr-002-append-only-journal-as-the-source-of-truth) | Append-only journal as the source of truth | Accepted |
 | [ADR-003](#adr-003-size-verification-for-cross-volume-copies) | Size verification for cross-volume copies | Accepted |
 | [ADR-004](#adr-004-a-three-file-lookahead-window) | A three-file lookahead window | Accepted |
+| [ADR-005](#adr-005-a-write-probe-instead-of-permission-checks) | A write probe instead of permission checks | Accepted |
 
 ---
 
@@ -134,3 +135,46 @@ obvious files, which is the normal case with memes and screenshots.
 **Preloading ten or more**
 With 4 MB photos that is tens of megabytes held for files the user may never see, and on a
 slow external drive the reads would queue behind each other.
+
+---
+
+## ADR-005: A write probe instead of permission checks
+
+**Date**: 2026-09-20
+
+### Context
+
+A session only makes sense if Tría can write to the source folder (a move deletes the
+original) and to every destination. Finding out after the session has started is the worst
+case: the queue runs behind the interface, so a user deciding at two files per second is
+hundreds of decisions in before the first failure means anything.
+
+That happened in a real session. macOS mounts every NTFS volume read-only, yet a folder on
+it reports ordinary permission bits. Checking permissions said yes; every write failed; 414
+decisions were lost.
+
+### Decision
+
+Before a session exists, **write and delete a real file** (`.tria-write-check`) in the
+source and in each destination (`FolderAccess.isWritable`). A destination that does not
+exist yet is created first, exactly as the session would. Any `FileSystemException` means
+not writable, and setup names the folder that refused.
+
+The probe does not replace failure handling during the session: a drive can be unplugged or
+fill up after the check. Failed moves are still surfaced by the queue.
+
+### Alternatives rejected
+
+**Reading permission bits** (`FileStat.mode`)
+The obvious answer, and the one that was wrong: a read-only mount, an OS-level protection
+such as Windows' controlled folder access, or a write-protected card all report normal
+permissions.
+
+**Asking the OS whether the volume is read-only**
+It needs platform code on each system (mount flags on macOS, volume attributes on Windows)
+and still misses the cases that are not about the volume.
+
+**No check, relying on failures during the session**
+Every failure is reported, but only after the user has spent the effort. Refusing to start
+costs one second; finding out at file 400 costs the session.
+

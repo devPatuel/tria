@@ -6,6 +6,7 @@
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)
 ![Platforms](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
+[![CI](https://github.com/devPatuel/tria/actions/workflows/ci.yml/badge.svg)](https://github.com/devPatuel/tria/actions/workflows/ci.yml)
 
 🇪🇸 [Léeme en español](README.md)
 
@@ -164,8 +165,9 @@ flutter test
 dart analyze --fatal-infos
 ```
 
-The core tests are plain Dart and run without Xcode or Visual Studio installed. Widget and
-integration tests do need the platform toolchain.
+The core tests are plain Dart, with no UI involved. CI runs the analyzer and every test on
+**macOS and Windows** on each push, because the code that touches the disk does not behave
+the same on both.
 
 More detail in [docs/SETUP.md](docs/SETUP.md).
 
@@ -177,6 +179,10 @@ destination counts.
 
 Designed but **not** implemented: opening the file in the system viewer (`Enter`) and 1:1
 zoom (`Space`).
+
+Next step: **a Linux build**. The core is already compatible (same error model as macOS);
+what is missing is generating the platform project, opening folders with `xdg-open`, and
+building it in CI.
 
 ## Documentation
 

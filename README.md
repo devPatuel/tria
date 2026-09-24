@@ -7,6 +7,7 @@
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)
 ![Plataformas](https://img.shields.io/badge/Plataformas-macOS%20%7C%20Windows-lightgrey)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-green)
+[![CI](https://github.com/devPatuel/tria/actions/workflows/ci.yml/badge.svg)](https://github.com/devPatuel/tria/actions/workflows/ci.yml)
 
 🇬🇧 [Read in English](README.en.md)
 
@@ -165,8 +166,9 @@ flutter test
 dart analyze --fatal-infos
 ```
 
-Los tests del núcleo son Dart puro y corren sin Xcode ni Visual Studio instalados. Los de
-widget e integración sí necesitan el toolchain de la plataforma.
+Los tests del núcleo son Dart puro, sin interfaz de por medio. El CI pasa el analizador y
+todos los tests en **macOS y en Windows** en cada push, porque el código que toca el disco
+no se comporta igual en los dos sistemas.
 
 Más detalle en [docs/SETUP.md](docs/SETUP.md).
 
@@ -178,6 +180,10 @@ sesión entera, resumen con recuentos por destino.
 
 Diseñado pero **no** implementado: abrir el archivo en el visor del sistema (`Intro`) y el
 zoom 1:1 (`Espacio`).
+
+Siguiente paso: **versión para Linux**. El núcleo ya es compatible (mismo modelo de errores
+que macOS); falta generar el proyecto de la plataforma, abrir las carpetas con `xdg-open` y
+compilarlo en el CI.
 
 ## Documentación
 
