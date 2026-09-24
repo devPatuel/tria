@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:tria/domain/destination.dart';
 import 'package:tria/domain/session_config.dart';
 
@@ -11,7 +12,7 @@ void main() {
       );
 
   test('soft trash lives inside the source root', () {
-    expect(config([]).trashPath, '/photos/_trash');
+    expect(config([]).trashPath, p.join('/photos', '_trash'));
   });
 
   test('rejects two destinations on the same slot', () {

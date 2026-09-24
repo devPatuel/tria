@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:pdfrx/pdfrx.dart';
 
 import '../../core/preview/preview_types.dart';
@@ -48,7 +48,7 @@ class PreviewPane extends StatelessWidget {
       case PreviewKind.generic:
         return _Notice(
           icon: Icons.insert_drive_file_outlined,
-          message: entry.path.split(Platform.pathSeparator).last,
+          message: p.basename(entry.path),
         );
     }
   }

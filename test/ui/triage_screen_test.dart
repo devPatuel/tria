@@ -101,7 +101,16 @@ void main() {
     await failing.start();
   });
 
-  tearDown(() => tmp.deleteSync(recursive: true));
+  tearDown(() {
+    try {
+      tmp.deleteSync(recursive: true);
+    } on FileSystemException {
+      // Windows refuses to delete a file that is still open, and the move that
+      // 'pressing 1' queues is deliberately never awaited (see that test), so
+      // its journal handle can outlive the test. A leftover temp folder is
+      // harmless; failing the suite over it is not.
+    }
+  });
 
   Widget wrap({VoidCallback? onFinish}) => MaterialApp(
         home: ChangeNotifierProvider.value(

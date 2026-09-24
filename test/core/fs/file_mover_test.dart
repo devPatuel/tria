@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:tria/core/fs/file_mover.dart';
 import 'package:tria/core/fs/move_result.dart';
 
@@ -15,7 +16,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('tria_mover_');
     source = Directory('${tmp.path}/source')..createSync();
-    target = Directory('${tmp.path}/family')..createSync();
+    target = Directory(p.join(tmp.path, 'family'))..createSync();
     mover = FileMover();
   });
 
@@ -31,8 +32,8 @@ void main() {
     final result = await mover.move('${source.path}/IMG_0042.jpg', target.path);
 
     expect(result.ok, isTrue);
-    expect(result.actualPath, '${target.path}/IMG_0042.jpg');
-    expect(File('${target.path}/IMG_0042.jpg').existsSync(), isTrue);
+    expect(result.actualPath, p.join(target.path, 'IMG_0042.jpg'));
+    expect(File(p.join(target.path, 'IMG_0042.jpg')).existsSync(), isTrue);
     expect(File('${source.path}/IMG_0042.jpg').existsSync(), isFalse);
   });
 
@@ -42,8 +43,8 @@ void main() {
 
     final result = await mover.move('${source.path}/IMG_0042.jpg', target.path);
 
-    expect(result.actualPath, '${target.path}/IMG_0042 (2).jpg');
-    expect(File('${target.path}/IMG_0042.jpg').lengthSync(), 999,
+    expect(result.actualPath, p.join(target.path, 'IMG_0042 (2).jpg'));
+    expect(File(p.join(target.path, 'IMG_0042.jpg')).lengthSync(), 999,
         reason: 'the pre-existing file must be untouched');
   });
 
@@ -54,7 +55,7 @@ void main() {
 
     final result = await mover.move('${source.path}/a.jpg', target.path);
 
-    expect(result.actualPath, '${target.path}/a (3).jpg');
+    expect(result.actualPath, p.join(target.path, 'a (3).jpg'));
   });
 
   test('creates the target folder when it does not exist yet', () async {
